@@ -1,0 +1,42 @@
+services:
+  opc-redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - opc-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  opc-app:
+    image: lingang/opc-delivery-desk:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      opc-redis:
+        condition: service_healthy
+    environment:
+      PORT: "4177"
+      OPC_SQLITE_PATH: /data/opc-demo.sqlite
+      REDIS_URL: redis://opc-redis:6379
+      DEEPSEEK_BASE_URL: ${OPC_AI_BASE_URL:-https://api.deepseek.com/chat/completions}
+      DEEPSEEK_MODEL: ${OPC_AI_MODEL:-deepseek-chat}
+      DEEPSEEK_API_KEY: ${OPC_AI_API_KEY:-}
+    ports:
+      - "127.0.0.1:${OPC_PORT:-8080}:4177"
+    volumes:
+      - opc-sqlite-data:/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4177/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  opc-redis-data:
+  opc-sqlite-data:

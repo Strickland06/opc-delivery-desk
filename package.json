@@ -1,0 +1,15 @@
+{
+  "name": "lingang-opc-delivery-desk",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "ioredis": "5.10.1"
+  },
+  "engines": {
+    "node": ">=22.5"
+  }
+}
