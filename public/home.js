@@ -1,8 +1,15 @@
 const $=selector=>document.querySelector(selector);
 const homeAuth=$('#homeAuthLinks'),sessionPanel=$('#sessionPanel'),roleForm=$('#roleForm'),roleAction=$('#roleAction');
+const introEyebrow=document.querySelector('.home-intro>.eyebrow'),introHeading=document.querySelector('.home-intro h1'),introDescription=document.querySelector('.home-intro>p:not(.eyebrow)');
+const visitorIntro=[introEyebrow.textContent,introHeading.innerHTML,introDescription.textContent];
 let account=null;
 function hasRole(role){return account?.role==='both'||account?.role===role}
-function roleTitle(role){return role==='both'?'请求者 + 工作者':role==='requester'?'请求者':'工作者'}
+function roleTitle(role){return role==='admin'?'管理员':role==='both'?'请求者 + 工作者':role==='requester'?'请求者':'工作者'}
+function showVisitor(){
+  document.body.classList.remove('is-authenticated','is-admin','auth-pending');
+  introEyebrow.textContent=visitorIntro[0];introHeading.innerHTML=visitorIntro[1];introDescription.textContent=visitorIntro[2];
+  homeAuth.hidden=false;sessionPanel.hidden=true;
+}
 function openRoleForm(){
   if(!account||!['requester','worker'].includes(account.role))return false;
   const missing=account.role==='requester'?'worker':'requester';
@@ -14,9 +21,15 @@ function openRoleForm(){
   return true;
 }
 function updateHome(){
+  document.body.classList.remove('auth-pending');
+  document.body.classList.add('is-authenticated');
   homeAuth.hidden=true;sessionPanel.hidden=false;
   $('#identityMessage').textContent=`你好，${account.displayName}`;
   $('#identityRoles').textContent=`当前账户：${roleTitle(account.role)} · 两个工作台共用这次登录`;
+  introEyebrow.textContent=account.role==='admin'?'ADMIN CONSOLE':'你的工作空间';
+  introHeading.textContent=account.role==='admin'?'欢迎回来，进入管理台':'选择工作台，继续协作。';
+  introDescription.textContent=account.role==='admin'?'管理账户与平台工单。':'请求者和工作者工作台共用当前账户，可随时切换。';
+  document.body.classList.toggle('is-admin',account.role==='admin');
   if(account.role==='admin'){$('#adminEntry').hidden=false;roleAction.hidden=true;roleForm.hidden=true;$('#requesterCard').classList.add('identity-locked');$('#workerCard').classList.add('identity-locked');return}
   roleAction.hidden=account.role==='both';
   if(account.role!=='both')roleAction.textContent=`开启${account.role==='requester'?'工作者':'请求者'}身份`;
@@ -26,9 +39,11 @@ function updateHome(){
   }
 }
 async function load(){
-  const response=await fetch('/api/opc/auth/session',{credentials:'same-origin'});
-  if(!response.ok){account=null;return}
-  const data=await response.json();account=data.account;updateHome();
+  try{
+    const response=await fetch('/api/opc/auth/session',{credentials:'same-origin'});
+    if(!response.ok){account=null;showVisitor();return}
+    const data=await response.json();account=data.account;updateHome();
+  }catch{account=null;showVisitor()}
 }
 roleAction.onclick=async()=>{
   if(!roleForm.hidden){roleForm.hidden=true;return}
